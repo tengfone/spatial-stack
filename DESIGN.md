@@ -196,8 +196,8 @@ Components are calibrated and restrained. Tight tolerances, no decoration beyond
 ### Analysis Status Language
 - **Pending / Processing:** Use Status Amber and direct labels while analysis is queued or polling. Avoid spinner-only states; users need to know the backend worker is still running.
 - **OpenRouter / Validated:** Use the standard Steel Blue badge for successful backend-owned model processing. Pair it with precise detail copy such as "Pydantic + sanity checks passed" when space allows.
-- **Fallback model used:** Use a Warning badge, not an error badge. The fallback means the primary result was rejected and a stronger model produced the final contract.
-- **Failed:** Use Alert Red and clear error copy. Never imply that the interface produced a substitute layout when both model attempts failed.
+- **Provider retry:** If the backend retries the same configured model with a provider-compatible response format, keep the state as processing unless the final contract fails. Do not present this as a second model or a degraded visual mode.
+- **Failed:** Use Alert Red and clear error copy. Never imply that the interface produced a substitute layout when the configured OpenRouter model could not produce a trustworthy contract.
 - **Recent Plans:** Treat the saved-plan queue as operational status, not marketing content. Ready records use direct "OPEN" actions; pending or processing records use direct wait/status language.
 
 ### Progress Bars
@@ -215,6 +215,7 @@ Components are calibrated and restrained. Tight tolerances, no decoration beyond
 - **Background:** oklch(0.96 0.005 250), a barely-tinted canvas. No grid pattern, no texture.
 - **Interaction:** Grab cursor at rest, grabbing on drag. Pointer capture for rotation.
 - **Floating controls:** Bottom-left overlay with Panel shadow. Contains toggle buttons (ghost/secondary variants) and a rotation readout in 11px mono.
+- **Source overlay:** Lives in Top view as an inspection layer, not decoration. The submitted plan image appears under extracted geometry at controlled opacity so reviewers can compare source evidence against spaces, walls, and labels.
 
 ### Analysis Panel
 - **Width:** 340px fixed, right-aligned. Parchment background, 1px Wire left border.

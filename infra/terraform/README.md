@@ -7,7 +7,7 @@ Serverless AWS scaffold for Scenario C:
 - Private S3 bucket for raw floor-plan uploads
 - DynamoDB table for shared plan analysis records, worker status, and results
 - Python Lambda API
-- API Gateway HTTP API with restricted CORS
+- API Gateway HTTP API behind same-origin CloudFront `/api/*` routing
 - Lambda IAM permissions for DynamoDB, raw-plan S3, and CloudWatch logs
 - Lambda self-invoke permission for async deployed floor-plan analysis
 - Optional AWS Budget and CloudWatch billing/usage alarms
@@ -36,10 +36,12 @@ The deployed frontend calls `/api` on the same CloudFront domain. CloudFront for
 
 Set `openrouter_api_key` before deploying. It is written to Terraform state and the Lambda environment, so prefer a hackathon/demo key with a spending limit.
 
-Set `openrouter_model` to override the default:
+Set `openrouter_model` to override the deployed Lambda model. The Terraform default currently matches the backend default:
 
 ```hcl
 openrouter_model = "google/gemini-3-flash-preview"
 ```
 
-In AWS, `POST /plans/analyze` and sample analysis requests return a pending plan record instead of waiting for OpenRouter. The Lambda writes uploaded raw plans to S3, records `pending` in DynamoDB, invokes itself asynchronously, then the worker updates `statusMessage` / `progressPct` while it runs strict JSON Schema OpenRouter analysis, Pydantic validation, and sanity checks. The frontend polls `GET /plans/{planId}` until DynamoDB reports `ready` or `failed`, and `GET /plans` exposes the shared queue for reopening ready plans or tracking in-flight jobs. This avoids API Gateway's 30-second integration timeout.
+`make openrouter-check` checks this configured model for image input, `response_format`, and structured-output support. There is no fallback-model Terraform variable.
+
+In AWS, `POST /plans/analyze` and sample analysis requests return a pending plan record instead of waiting for OpenRouter. The Lambda writes uploaded raw plans to S3, records `pending` in DynamoDB, invokes itself asynchronously, then the worker updates `statusMessage` / `progressPct` while it runs OpenRouter structured output analysis, Pydantic validation, and spatial sanity checks. The frontend polls `GET /plans/{planId}` until DynamoDB reports `ready` or `failed`, and `GET /plans` exposes the shared queue for reopening ready plans or tracking in-flight jobs. This avoids API Gateway's 30-second integration timeout.

@@ -6,8 +6,7 @@ BACKEND_DIR := $(ROOT_DIR)/backend
 FRONTEND_DIR := $(ROOT_DIR)/frontend
 
 AWS_REGION ?= ap-southeast-1
-OPENROUTER_MODEL ?= qwen/qwen3.5-flash-02-23
-OPENROUTER_FALLBACK_MODEL ?= qwen/qwen3.6-flash
+OPENROUTER_MODEL ?= google/gemini-3-flash-preview
 TF_PLAN ?= tfplan
 LOG_SINCE ?= 30m
 LAMBDA_PACKAGER ?= local
@@ -98,10 +97,7 @@ openrouter-check:
 	@set -e; \
 	models_json=$$(mktemp); \
 	curl -fsS "https://openrouter.ai/api/v1/models?supported_parameters=structured_outputs" > "$$models_json"; \
-	for model in "$(OPENROUTER_MODEL)" "$(OPENROUTER_FALLBACK_MODEL)"; do \
-		if [ -z "$$model" ]; then continue; fi; \
-		python3 -c "import json,sys; model=sys.argv[1]; data=json.load(sys.stdin).get('data', []); found=next((item for item in data if item.get('id') == model), None); assert found, f'OpenRouter structured-output model not found: {model}'; arch=found.get('architecture') or {}; inputs=set(arch.get('input_modalities') or []); params=set(found.get('supported_parameters') or []); assert 'image' in inputs, f'OpenRouter model does not support image input: {model}'; assert 'structured_outputs' in params and 'response_format' in params, f'OpenRouter model does not support structured JSON output: {model}'; print(model)" "$$model" < "$$models_json"; \
-	done; \
+	python3 -c "import json,sys; model=sys.argv[1]; data=json.load(sys.stdin).get('data', []); found=next((item for item in data if item.get('id') == model), None); assert found, f'OpenRouter structured-output model not found: {model}'; arch=found.get('architecture') or {}; inputs=set(arch.get('input_modalities') or []); params=set(found.get('supported_parameters') or []); assert 'image' in inputs, f'OpenRouter model does not support image input: {model}'; assert 'structured_outputs' in params and 'response_format' in params, f'OpenRouter model does not support structured JSON output: {model}'; print(model)" "$(OPENROUTER_MODEL)" < "$$models_json"; \
 	rm -f "$$models_json"
 
 package-lambda:

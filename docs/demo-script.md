@@ -24,7 +24,7 @@ Use this path for the recording:
 4. If sample cards are not visible, use **Upload floor plan** and choose `backend/sample_files/C1.jpg`.
 5. Watch the loading overlay show the current status message and progress bar while analysis runs.
 6. Wait for the plan to become ready, then confirm the detail panel opens and the plan shows **OpenRouter** processing mode.
-7. Walk through: **Workspace**, **3D**, **Top**, **Measure**, **Furniture**, **Sun**, **Walk**, **Materials**, **Export**, **Architecture**.
+7. Walk through: **Workspace**, **3D**, **Top**, **Source**, **Measure**, **Furniture**, **Sun**, **Walk**, **Materials**, **Export**, **Architecture**.
 
 Expected demo state after successful analysis:
 
@@ -36,12 +36,12 @@ Expected demo state after successful analysis:
 | Demo context | Unit C1 apartment floor plan |
 | Processing mode | OpenRouter |
 | Result status | Ready spatial contract |
-| Required viewer outputs | Interactive model, room labels, room list, original plan preview |
+| Required viewer outputs | Interactive model, room/space labels, detected item list, source preview, top-view source overlay |
 | Loading behavior | Status message and progress bar while polling the saved plan record |
 | Saved state | Recent Plans list can reopen ready records and track in-flight jobs |
-| Required metrics | Total area, floors, rooms, furniture fit, sightline continuity, circulation, wall length |
+| Required metrics | Total area, floors, spaces or rooms, furniture fit, sightline continuity, circulation, wall length |
 | Viewer modes | 3D and Top |
-| Tools | Measure, Furniture, Sun, Walk, Materials, Export |
+| Tools | Source, Measure, Furniture, Sun, Walk, Materials, Export |
 
 Model-derived room counts, dimensions, scores, and notes can vary by run. Do not memorize exact numbers. Read the values shown in the right panel during the recording.
 
@@ -49,18 +49,19 @@ Model-derived room counts, dimensions, scores, and notes can vary by run. Do not
 
 Use these explanations when the UI shows a metric or control.
 
-- **Spatial contract**: the structured JSON result returned by the backend. It contains rooms, dimensions, coordinates, furniture placements, metrics, source file, and processing metadata.
+- **Spatial contract**: the structured JSON result returned by the backend. It contains spaces, rooms, dimensions, coordinates, geometry, furniture placements, metrics, source file, and processing metadata.
 - **Saved plan record**: the shared backend record for one analysis. Before it is ready, it carries `pending` or `processing` status plus a status message and progress percentage. After it is ready, it carries the spatial contract.
 - **Recent Plans**: the shared list of saved plan records. It lets users reopen ready analyses or wait on pending and processing jobs instead of starting a new model call.
 - **Processing mode**: the model path used for analysis. In this demo it should show OpenRouter.
 - **Total area**: the estimated sum of floor-plan area in square metres. Treat it as model-derived and reviewable, not a surveyed legal area.
-- **Detected rooms**: the rooms the analysis engine extracted from the 2D plan, including room type, size, position, and confidence.
+- **Detected spaces / rooms**: the spaces or rooms the analysis engine extracted from the 2D plan, including type, size, position, and confidence.
 - **Furniture fit**: a planning score for whether detected or inferred furniture placements fit the extracted room geometry.
 - **Sightline continuity**: a planning score for how readable the layout is from circulation and room-to-room flow.
 - **Circulation**: estimated area used for movement through the space, such as halls and connecting paths.
 - **Wall length**: estimated linear metres of walls in the extracted geometry.
 - **3D view**: the raised SVG spatial model used to understand volume, rooms, walls, and furniture.
 - **Top view**: a plan-aligned inspection mode for checking the extracted model against the original 2D layout.
+- **Source overlay**: a top-view image overlay for comparing extracted geometry against the submitted plan image or sample preview.
 - **Walk-through preview**: a low-angle inspection mode for understanding occupant experience. It is not a real-time game engine or final virtual-tour deliverable.
 - **Original plan**: the uploaded source evidence shown in the details panel so reviewers can compare extraction against the source drawing.
 
@@ -102,9 +103,9 @@ Say:
 >
 > The status message and progress bar come from the backend worker. That is important because multimodal floor-plan analysis can take longer than a normal web request, especially when the model is generating a large structured JSON object.
 >
-> The backend sends the plan to OpenRouter's multimodal model path and requests strict JSON Schema output. The output is not just a screenshot or a paragraph. It is a typed spatial contract: rooms, dimensions, coordinates, furniture placements, and review metrics.
+> The backend sends the plan to OpenRouter's multimodal model path and requests structured JSON output. The output is not just a screenshot or a paragraph. It is a typed spatial contract: rooms, spaces, dimensions, coordinates, furniture placements, extracted geometry, and review metrics.
 >
-> The model path uses Gemini 3 Flash Preview by default. Python then validates the payload with Pydantic, treats linked space polygons as the room-boundary authority, and runs sanity checks for things like empty room extraction, missing dimensions, severe overlap, furniture outside rooms, low confidence, and incomplete geometry.
+> The backend uses one configured OpenRouter model. The current repo default is `google/gemini-3-flash-preview`, but the important product point is that there is one configured model path, not browser-side AI and not a hidden fallback model. If a Gemini-family provider rejects the schema arguments, the backend may retry the same model with a provider-compatible JSON mode; that is not a second-model fallback. Python then validates the payload with Pydantic, treats linked space polygons as the room-boundary authority, and runs sanity checks for things like empty room extraction, missing dimensions, severe overlap, furniture outside rooms, low confidence, and incomplete geometry.
 >
 > If the OpenRouter key is missing or the model attempt fails, this app returns an explicit error. It does not invent a fake floor plan for demo continuity. That is important for trust: a planning tool should fail honestly when it cannot analyze the source.
 
@@ -122,9 +123,9 @@ Say:
 
 > The detail panel is the review record. At the top, it shows the plan name, source file, and processing mode. For this recording, the processing mode should be OpenRouter.
 >
-> The first metric row gives the building type, total area, number of floors, and room count. These are model-derived values, so I am going to read the current values from the screen rather than treating them as fixed survey data.
+> The first metric row gives the building type, total area, number of floors, and either detected spaces or detected rooms. These are model-derived values, so I am going to read the current values from the screen rather than treating them as fixed survey data.
 
-Read the visible values for **TYPE**, **TOTAL AREA**, **FLOORS**, and **ROOMS**.
+Read the visible values for **TYPE**, **TOTAL AREA**, **FLOORS**, and **SPACES** or **ROOMS**.
 
 Say:
 
@@ -132,11 +133,11 @@ Say:
 >
 > Below that, circulation and wall length give facilities teams fast quantities for planning discussions. These are not construction takeoff quantities. They are review metrics to decide whether the plan deserves deeper inspection.
 
-Point to **Detected Rooms**.
+Point to **Detected Rooms** or **Detected Spaces**, depending on the current result.
 
 Say:
 
-> The detected room list is where a reviewer can audit the extraction. Each room has a label, type, dimensions, area, and confidence. The important thing is that the app gives the planner something inspectable, not just a polished rendering.
+> The detected list is where a reviewer can audit the extraction. Each item has a label, type, dimensions, area, and confidence. The important thing is that the app gives the planner something inspectable, not just a polished rendering.
 
 Open **Original Plan** if it is collapsed.
 
@@ -161,6 +162,12 @@ Say:
 > Top view is the audit mode. It aligns the generated model closer to the original plan logic, so the reviewer can compare labels, room adjacency, and relative sizing against the source.
 >
 > The goal is not to replace professional judgment. The goal is to make judgment faster by turning a flat drawing into something measurable and interactive.
+
+Action: Click **Source**, then toggle the overlay visible if it is available.
+
+Say:
+
+> The source overlay puts the submitted plan under the extracted geometry in top view. This is the fastest visual check: do the extracted spaces line up with the drawing, and do the labels and room proportions make sense?
 
 Action: Click **Measure**, then **Enable**, and measure two visible points if practical.
 
@@ -240,7 +247,7 @@ Point to **Runtime Layers**.
 
 Say:
 
-> The runtime layers are deliberately standard: Vite, React, TypeScript on the frontend; FastAPI through Lambda on the backend; OpenRouter multimodal processing for the floor-plan interpretation.
+> The runtime layers are deliberately standard: Vite, React, TypeScript on the frontend; FastAPI through Lambda on the backend; OpenRouter structured-output processing for the floor-plan interpretation.
 
 Point to **Boundary Rules**.
 

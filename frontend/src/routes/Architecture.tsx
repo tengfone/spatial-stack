@@ -68,7 +68,7 @@ const requestPath = [
 const runtimeLayers = [
   { label: "Frontend", value: "Vite, React, TypeScript" },
   { label: "API", value: "FastAPI via Lambda proxy" },
-  { label: "Model calls", value: "OpenRouter strict JSON with Gemini 3 Flash Preview" },
+  { label: "Model calls", value: "OpenRouter structured output with the configured model" },
   { label: "Validation", value: "Pydantic contract and spatial sanity checks" },
 ];
 

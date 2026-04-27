@@ -1,6 +1,6 @@
 # Architecture
 
-Spatial Stack is a lean serverless prototype: a static spatial-review workbench calls a Python API that owns upload handling, OpenRouter model invocation, dual validation, shared plan status, persistence, raw-plan storage, polling, and origin protection.
+Spatial Stack is a lean serverless prototype: a static spatial-review workbench calls a Python API that owns upload handling, OpenRouter model invocation, provider-aware response formatting, validation, shared plan status, persistence, raw-plan storage, polling, and origin protection.
 
 Editable Draw.io source: [`docs/aws-architecture.drawio`](aws-architecture.drawio). PNG export: [`docs/aws-architecture.png`](aws-architecture.png).
 
@@ -19,7 +19,7 @@ flowchart LR
   lambda --> worker["Async Lambda worker\nAWS deployment"]
   worker --> analyzer["Spatial analyzer\nPydantic + sanity validation"]
   analyzer --> pdf["PyMuPDF PDF first-page render"]
-  analyzer --> openrouter["OpenRouter structured outputs\nGemini 3 Flash Preview"]
+  analyzer --> openrouter["OpenRouter structured output\nconfigured model"]
   lambda --> raw["Private S3 raw plan bucket"]
   worker --> ddb
   lambda --> logs["CloudWatch Logs"]
@@ -28,11 +28,11 @@ flowchart LR
 ## Services And Choices
 
 - **Frontend:** Vite, React, TypeScript, Tailwind CSS, `HashRouter`, and local UI primitives. The app builds to static assets, so it can be served from private S3 through CloudFront without a Node server.
-- **Viewer:** The core model renderer is an interactive SVG projection, not a WebGL dependency. It supports 3D-style prism view, top view, pan, zoom, rotation, measuring, sun/orientation controls, material previews, furniture toggles, walk-through preview, SVG export, and spatial JSON export.
+- **Viewer:** The core model renderer is an interactive SVG projection, not a WebGL dependency. It supports 3D-style prism view, top view, pan, zoom, rotation, source overlay comparison, measuring, sun/orientation controls, material previews, furniture toggles, walk-through preview, SVG export, and spatial JSON export.
 - **API:** FastAPI runs locally, while the same endpoint logic is exposed through a Lambda-compatible handler in AWS. API Gateway HTTP API sits behind CloudFront `/api/*`.
 - **Origin protection:** CloudFront injects a Terraform-generated private header on `/api/*` requests. The Lambda handler rejects direct API Gateway calls when `API_ORIGIN_HEADER_VALUE` is configured.
 - **Persistence:** Local development uses in-memory state. In AWS, DynamoDB stores shared plan records, worker status, final analysis contracts, and audit entries with a `pk`/`sk` table design. Private S3 stores uploaded raw floor plans.
-- **AI runtime:** OpenRouter Chat Completions is the required model path for floor-plan interpretation. The backend runs Gemini 3 Flash Preview by default with strict JSON Schema structured output, validates the response with Pydantic, makes linked space polygons authoritative for room bounds, and applies sanity checks before returning a result. `OPENROUTER_MODEL` or Terraform's `openrouter_model` can override the default.
+- **AI runtime:** OpenRouter Chat Completions is the required model path for floor-plan interpretation. The backend runs one configured model, currently defaulting to `google/gemini-3-flash-preview` when `OPENROUTER_MODEL` is unset, requests structured JSON output, uses compact provider-compatible schemas for Gemini-family models, validates the response with Pydantic, makes linked space polygons authoritative for room bounds, and applies sanity checks before returning a result. `OPENROUTER_MODEL` or Terraform's `openrouter_model` can override the default.
 - **PDF support:** The backend renders the first page of a PDF to JPEG with PyMuPDF, then sends that image through the same OpenRouter analysis path.
 - **Image support:** Floor-plan images are sent to OpenRouter as base64 data URLs behind the backend boundary.
 - **Guardrails and cost:** Terraform includes short Lambda log retention, API throttling, Lambda reserved concurrency, raw-plan S3 expiry, optional AWS Budgets, SNS email alerts, and CloudWatch usage or billing alarms.
@@ -46,24 +46,24 @@ flowchart LR
 5. Locally, the backend creates a `plan-*` ID, saves a pending shared record, returns `202`, and runs the worker in a background task.
 6. In AWS, the API Lambda stores the raw upload in S3, writes a pending plan record to DynamoDB, invokes itself asynchronously, and returns the plan ID immediately.
 7. The async worker marks the record `processing`, reads the upload, renders PDF page 1 to JPEG when needed, and sends the floor-plan image to OpenRouter.
-8. OpenRouter is called with `response_format: { type: "json_schema" }`; Gemini 3 Flash Preview returns a structured JSON object describing plan name, building type, floors, total area, spaces, rooms, furniture, geometry primitives, and metrics.
-9. Python normalizes the payload, fills safe display defaults, infers room types when needed, uses linked space polygons as the geometry authority for matching room bounds, repairs renderer-hostile fallback geometry, and validates the contract with Pydantic.
-10. The analyzer runs sanity checks against both the raw model payload and validated contract: no rooms, missing dimensions, severe room overlap when room rectangles are the only geometry, furniture outside rooms, and low confidence all mark the attempt bad.
+8. OpenRouter is called with `response_format: { type: "json_schema" }`; the configured model returns a structured JSON object describing plan name, building type, floors, total area, floor plate, spaces, rooms, furniture, geometry primitives, and metrics. Gemini-family models use a compact provider-compatible schema and can retry the same model with `json_object` when the provider rejects JSON Schema arguments.
+9. Python normalizes the payload, fills safe display defaults, canonicalizes nested room geometry and polygon aliases, infers room types when needed, uses linked space polygons as the geometry authority for matching room bounds, derives renderer-safe geometry where the model omitted fields, and validates the contract with Pydantic.
+10. The analyzer runs sanity checks against both the raw model payload and validated contract: no rooms, missing dimensions, severe room overlap when room rectangles are the only geometry, furniture outside rooms, low confidence, incomplete space extraction, missing floor plate polygons, and missing openings all mark the attempt bad.
 11. If the configured model attempt fails validation or sanity checks, the plan is marked `failed`.
 12. Status updates such as `statusMessage` and `progressPct`, plus the final validated analysis contract, are saved to the active store. In local development this is memory; in AWS these are DynamoDB records shared by all users of the prototype.
 13. The frontend polls `GET /plans/{planId}` during local and deployed analysis, renders the contract as an interactive model when ready, and shows the original plan preview and top-view overlay for source comparison.
 14. `GET /plans` feeds the shared Recent Plans list so users can reopen ready plans or wait on pending and processing records instead of re-running slow analysis.
-14. The user can export the visual SVG scene or the underlying spatial JSON contract.
+15. The user can export the visual SVG scene or the underlying spatial JSON contract.
 
 ## Dual Validation Flow
 
-The OpenRouter response is treated as evidence, not as the final authority. The backend applies OpenRouter's structured-output constraint plus two validation layers before rendering:
+The OpenRouter response is treated as evidence, not as the final authority. The backend applies OpenRouter's structured-output request plus two validation layers before rendering:
 
 | Layer | What It Checks | Failure Behavior |
 |---|---|---|
-| Strict JSON Schema | OpenRouter must return the required structured object rather than prose or malformed JSON. | The attempt fails before contract parsing. |
+| Structured output request | OpenRouter must return a parseable structured object rather than prose. The primary request uses JSON Schema, with a provider-compatible `json_object` retry for supported Gemini-family failures. | The attempt fails before contract parsing if both response-format paths fail. |
 | Pydantic contract validation | Required fields, types, aliases, room metrics, furniture shape, and plan metadata. | The attempt fails and the saved plan is marked failed. |
-| Sanity checks | Empty room extraction, missing dimensions, severe room overlap when room rectangles are the only geometry, out-of-room furniture, and low confidence. | The attempt fails and the saved plan is marked failed. |
+| Sanity checks | Empty room extraction, missing dimensions, severe room overlap when room rectangles are the only geometry, out-of-room furniture, low confidence, incomplete space extraction, missing floor plate polygons, and missing openings. | The attempt fails and the saved plan is marked failed. |
 
 This keeps model behavior predictable: one configured model produces one structured contract, and weak output fails visibly instead of being blended with a second model's interpretation.
 
@@ -87,12 +87,13 @@ The Lambda handler also accepts raw binary bodies with an `x-filename` header, w
 
 When analysis is complete, the API returns a `PlanAnalysis` object:
 
-- `id`, `name`, `status`, `sourceFile`, `contentType`, `processingMode`, and optional `modelId`.
+- `id`, `name`, `status`, `sourceFile`, `contentType`, `processingMode`, optional `modelId`, and optional `rawObjectKey`.
 - `buildingType`, `floors`, `totalAreaSqm`, and `notes`.
+- `floorPlate`, `spaces`, `walls`, `openings`, `fixtures`, and `labels` for polygon-first rendering and top-view comparison.
 - `rooms`, where each room has `id`, `name`, `type`, `areaSqm`, `widthM`, `depthM`, `xM`, `yM`, `confidence`, and `furniture`.
 - `metrics`, including `roomCount`, `circulationAreaSqm`, `estimatedWallLengthM`, `furnitureFitScore`, and `sightlineScore`.
 
-While analysis is still running, the same endpoints return a `PlanRecord` with `status`, `statusMessage`, `progressPct`, `sourceFile`, `contentType`, timestamps, and optional `error`. The frontend treats those fields as the source of truth for the loading overlay and shared Recent Plans queue.
+While analysis is still running, the same endpoints return a `PlanRecord` with `status`, `statusMessage`, `progressPct`, `sourceFile`, `contentType`, timestamps, optional `rawObjectKey`, and optional `error`. The frontend treats those fields as the source of truth for the loading overlay and shared Recent Plans queue.
 
 The frontend treats that contract as the system of record. It does not re-run model inference, ask an LLM for display values, or calculate hidden room metadata in the browser.
 
@@ -101,7 +102,7 @@ The frontend treats that contract as the system of record. It does not re-run mo
 | Layer | System of record | Output |
 |---|---|---|
 | Source evidence | Uploaded floor plan and raw-plan S3 object when configured | Original PNG, JPG, or PDF source. |
-| Model interpretation | OpenRouter via backend API | Strict JSON Schema room, furniture, dimension, and metric payload. |
+| Model interpretation | OpenRouter via backend API | Structured room, space, geometry, furniture, fixture, label, dimension, and metric payload. |
 | Contract validation | Python analyzer and Pydantic models | Typed spatial contract or explicit failed plan. |
 | Sanity validation | Python geometry and confidence checks | Empty, incomplete, overlapping, or low-confidence outputs are rejected. |
 | Spatial review | React SVG workbench | Interactive model, measurements, room list, source preview, and exports. |
@@ -113,7 +114,7 @@ OpenRouter interprets the drawing through the configured model, but it is not th
 
 - **No frontend AI credentials:** The browser never receives the OpenRouter API key and never calls OpenRouter directly.
 - **No fabricated fallback:** If `OPENROUTER_API_KEY` is missing or the configured model attempt fails, the API returns an explicit error. The demo does not silently show a fake layout.
-- **Dual validation before rendering:** Pydantic rejects malformed model output, and sanity checks reject empty, incomplete, severely overlapping, out-of-bounds, or low-confidence spatial results before the contract reaches the UI.
+- **Validation before rendering:** Pydantic rejects malformed model output, and sanity checks reject empty, incomplete, severely overlapping, out-of-bounds, or low-confidence spatial results before the contract reaches the UI.
 - **Private origins:** The frontend bucket is private behind CloudFront OAC. The raw-plan bucket blocks public access and uses server-side encryption.
 - **Origin-bypass check:** Deployed Lambda rejects direct API Gateway requests that do not include the CloudFront private header.
 - **Small cost envelope:** On-demand DynamoDB, S3 lifecycle expiry, Lambda concurrency caps, API throttles, and optional budget alarms keep the prototype hackathon-friendly.

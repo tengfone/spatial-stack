@@ -517,6 +517,99 @@ class AnalyzerGeometryTest(unittest.TestCase):
         self.assertEqual(room.depth_m, 3.0)
         self.assertEqual(room.area_sqm, 10.2)
 
+    def test_nested_room_geometry_passes_dimension_sanity(self) -> None:
+        payload = {
+            "name": "Nested Gemini Geometry",
+            "buildingType": "Apartment",
+            "floors": 1,
+            "totalAreaSqm": 28,
+            "notes": "Gemini-style nested geometry.",
+            "rooms": [
+                {
+                    "id": "living",
+                    "name": "Living Room",
+                    "type": "living_room",
+                    "dimensions": {"areaSqm": 16, "width": 4, "height": 4},
+                    "position": {"x": 0, "y": 0},
+                    "confidence": 0.9,
+                    "furniture": [],
+                },
+                {
+                    "id": "bedroom",
+                    "name": "Bedroom",
+                    "type": "bedroom",
+                    "dimensions": {"area": 12, "widthM": 3, "depthM": 4},
+                    "coordinates": {"xM": 4, "yM": 0},
+                    "confidence": 0.86,
+                    "furniture": [],
+                },
+            ],
+            "metrics": {
+                "roomCount": 2,
+                "circulationAreaSqm": 3,
+                "estimatedWallLengthM": 28,
+                "furnitureFitScore": 74,
+                "sightlineScore": 70,
+            },
+        }
+
+        analysis = _analysis_from_payload(payload, "plan-test", "nested.png", "image/png")
+        issues = analyzer._analysis_sanity_issues(analysis, payload)
+        rooms_by_id = {room.id: room for room in analysis.rooms}
+
+        self.assertFalse(any("missing required dimensions or coordinates" in issue for issue in issues))
+        self.assertEqual(rooms_by_id["living"].width_m, 4)
+        self.assertEqual(rooms_by_id["living"].depth_m, 4)
+        self.assertEqual(rooms_by_id["bedroom"].x_m, 4)
+        self.assertEqual(rooms_by_id["bedroom"].y_m, 0)
+
+    def test_space_points_alias_drives_room_bounds_and_sanity(self) -> None:
+        payload = {
+            "name": "Space Points Alias",
+            "buildingType": "Apartment",
+            "floors": 1,
+            "totalAreaSqm": 14,
+            "notes": "Space geometry uses a provider-specific points key.",
+            "spaces": [
+                {
+                    "id": "study-space",
+                    "label": "Study",
+                    "type": "study",
+                    "points": [[1, 0.5], [4.5, 0.5], [4.5, 3.5], [1, 3.5]],
+                    "areaSqm": 10.5,
+                    "confidence": 0.88,
+                    "linkedRoomId": "study",
+                }
+            ],
+            "rooms": [
+                {
+                    "id": "study",
+                    "name": "Study",
+                    "type": "office",
+                    "confidence": 0.88,
+                    "furniture": [],
+                }
+            ],
+            "metrics": {
+                "roomCount": 1,
+                "circulationAreaSqm": 3,
+                "estimatedWallLengthM": 16,
+                "furnitureFitScore": 80,
+                "sightlineScore": 80,
+            },
+        }
+
+        analysis = _analysis_from_payload(payload, "plan-test", "space-points.png", "image/png")
+        issues = analyzer._analysis_sanity_issues(analysis, payload)
+        room = analysis.rooms[0]
+
+        self.assertEqual(issues, [])
+        self.assertEqual(room.x_m, 1)
+        self.assertEqual(room.y_m, 0.5)
+        self.assertEqual(room.width_m, 3.5)
+        self.assertEqual(room.depth_m, 3.0)
+        self.assertEqual(room.area_sqm, 10.5)
+
     def test_submeter_service_spaces_keep_their_dimensions(self) -> None:
         payload = {
             "name": "Small Space Test",

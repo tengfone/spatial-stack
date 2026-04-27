@@ -514,7 +514,7 @@ def _payload_has_space_geometry(payload: dict[str, Any]) -> bool:
     spaces = payload.get("spaces")
     if not isinstance(spaces, list):
         return False
-    return any(isinstance(space, dict) and len(_normalize_polygon(space.get("polygon"))) >= 3 for space in spaces)
+    return any(isinstance(space, dict) and len(_space_polygon(space)) >= 3 for space in spaces)
 
 
 def _analysis_geometry_issues(analysis: PlanAnalysis, payload: dict[str, Any]) -> list[str]:
@@ -541,19 +541,20 @@ def _payload_dimension_issues(payload: dict[str, Any]) -> list[str]:
     for room in rooms:
         if not isinstance(room, dict):
             continue
-        if not _has_number(room, ["areaSqm", "area_sqm", "area"]):
+        canonical_room = _canonicalize_room_geometry(room)
+        if not _has_number(canonical_room, ["areaSqm", "area_sqm", "area"]):
             missing_count += 1
             continue
-        if not _has_number(room, ["widthM", "width_m", "width"]):
+        if not _has_number(canonical_room, ["widthM", "width_m", "width"]):
             missing_count += 1
             continue
-        if not _has_number(room, ["depthM", "depth_m", "depth"]):
+        if not _has_number(canonical_room, ["depthM", "depth_m", "depth"]):
             missing_count += 1
             continue
-        if not _has_number(room, ["xM", "x_m", "x"]):
+        if not _has_number(canonical_room, ["xM", "x_m", "x"]):
             missing_count += 1
             continue
-        if not _has_number(room, ["yM", "y_m", "y"]):
+        if not _has_number(canonical_room, ["yM", "y_m", "y"]):
             missing_count += 1
 
     if missing_count:
@@ -648,6 +649,10 @@ def _normalize_analysis_payload(payload: dict[str, Any], filename: str) -> dict[
     clean_payload = dict(payload)
     rooms = clean_payload.get("rooms")
 
+    if isinstance(rooms, list):
+        clean_payload["rooms"] = [_canonicalize_room_geometry(room) if isinstance(room, dict) else room for room in rooms]
+        rooms = clean_payload["rooms"]
+
     if not _has_any(clean_payload, ["name"]):
         clean_payload["name"] = _plan_name_from_filename(filename)
     if not _has_any(clean_payload, ["buildingType", "building_type"]):
@@ -707,6 +712,108 @@ def _normalize_geometry_payload(clean_payload: dict[str, Any], rooms: list[Any])
     clean_payload["labels"] = _merge_labels(_normalize_labels(clean_payload.get("labels"), rooms), _labels_from_spaces(spaces))
 
 
+def _canonicalize_room_geometry(room: dict[str, Any]) -> dict[str, Any]:
+    clean_room = dict(room)
+
+    for source_key in ("dimensions", "dimension", "size"):
+        source = clean_room.get(source_key)
+        if isinstance(source, dict):
+            _copy_number_if_missing(clean_room, "areaSqm", ["areaSqm", "area_sqm", "area"], source, ["areaSqm", "area_sqm", "area", "sqm", "squareMeters", "square_meters"])
+            _copy_number_if_missing(clean_room, "widthM", ["widthM", "width_m", "width"], source, ["widthM", "width_m", "width", "w"])
+            _copy_number_if_missing(clean_room, "depthM", ["depthM", "depth_m", "depth"], source, ["depthM", "depth_m", "depth", "heightM", "height_m", "height", "lengthM", "length_m", "length", "h", "d"])
+
+    for source_key in ("position", "coordinate", "coordinates", "origin", "topLeft", "top_left"):
+        source = clean_room.get(source_key)
+        if isinstance(source, dict):
+            _copy_number_if_missing(clean_room, "xM", ["xM", "x_m", "x"], source, ["xM", "x_m", "x", "left", "minX", "min_x"])
+            _copy_number_if_missing(clean_room, "yM", ["yM", "y_m", "y"], source, ["yM", "y_m", "y", "top", "minY", "min_y"])
+
+    _apply_bounds_if_present(clean_room, clean_room)
+    for source_key in ("bounds", "bbox", "boundingBox", "bounding_box", "rect", "rectangle"):
+        source = clean_room.get(source_key)
+        if isinstance(source, (dict, list, tuple)):
+            _apply_bounds_if_present(clean_room, source)
+
+    polygon = _space_polygon(clean_room)
+    bounds = _polygon_bounds(polygon)
+    if bounds:
+        _set_number_if_missing(clean_room, "xM", ["xM", "x_m", "x"], bounds["min_x"])
+        _set_number_if_missing(clean_room, "yM", ["yM", "y_m", "y"], bounds["min_y"])
+        _set_number_if_missing(clean_room, "widthM", ["widthM", "width_m", "width"], bounds["width"])
+        _set_number_if_missing(clean_room, "depthM", ["depthM", "depth_m", "depth"], bounds["depth"])
+        _set_number_if_missing(clean_room, "areaSqm", ["areaSqm", "area_sqm", "area"], _polygon_area(polygon))
+
+    return clean_room
+
+
+def _copy_number_if_missing(target: dict[str, Any], target_key: str, target_aliases: list[str], source: Any, source_keys: list[str]) -> None:
+    value = _optional_number_value(source, source_keys)
+    _set_number_if_missing(target, target_key, target_aliases, value)
+
+
+def _set_number_if_missing(target: dict[str, Any], target_key: str, target_aliases: list[str], value: float | None) -> None:
+    if value is None or not math.isfinite(value) or _has_number(target, target_aliases):
+        return
+    target[target_key] = round(float(value), 3)
+
+
+def _apply_bounds_if_present(target: dict[str, Any], source: Any) -> None:
+    bounds = _bounds_from_source(source)
+    if not bounds:
+        return
+    _set_number_if_missing(target, "xM", ["xM", "x_m", "x"], bounds["x"])
+    _set_number_if_missing(target, "yM", ["yM", "y_m", "y"], bounds["y"])
+    _set_number_if_missing(target, "widthM", ["widthM", "width_m", "width"], bounds["width"])
+    _set_number_if_missing(target, "depthM", ["depthM", "depth_m", "depth"], bounds["depth"])
+    _set_number_if_missing(target, "areaSqm", ["areaSqm", "area_sqm", "area"], bounds["width"] * bounds["depth"])
+
+
+def _bounds_from_source(value: Any) -> dict[str, float] | None:
+    if isinstance(value, dict):
+        x = _optional_number_value(value, ["xM", "x_m", "x", "left", "minX", "min_x"])
+        y = _optional_number_value(value, ["yM", "y_m", "y", "top", "minY", "min_y"])
+        width = _optional_number_value(value, ["widthM", "width_m", "width", "w"])
+        depth = _optional_number_value(value, ["depthM", "depth_m", "depth", "heightM", "height_m", "height", "lengthM", "length_m", "length", "h", "d"])
+        max_x = _optional_number_value(value, ["maxX", "max_x", "right"])
+        max_y = _optional_number_value(value, ["maxY", "max_y", "bottom"])
+        if x is not None and y is not None:
+            if (width is None or width <= 0) and max_x is not None:
+                width = max_x - x
+            if (depth is None or depth <= 0) and max_y is not None:
+                depth = max_y - y
+            if width is not None and depth is not None and width > 0 and depth > 0:
+                return {"x": x, "y": y, "width": width, "depth": depth}
+
+    if isinstance(value, (list, tuple)) and len(value) >= 4:
+        numbers = [_coerce_number(item) for item in value[:4]]
+        if all(number is not None for number in numbers):
+            x, y, width, depth = (float(number) for number in numbers if number is not None)
+            if width > 0 and depth > 0:
+                return {"x": x, "y": y, "width": width, "depth": depth}
+
+    return None
+
+
+def _space_polygon(space: dict[str, Any]) -> list[dict[str, float]]:
+    for key in ("polygon", "points", "boundary", "vertices", "outline", "coordinates"):
+        polygon = _normalize_polygon(space.get(key))
+        if polygon:
+            return polygon
+    geometry = space.get("geometry")
+    if isinstance(geometry, dict):
+        polygon = _normalize_polygon(geometry)
+        if polygon:
+            return polygon
+    return []
+
+
+def _first_present(value: dict[str, Any], keys: list[str]) -> Any:
+    for key in keys:
+        if key in value and value[key] not in (None, ""):
+            return value[key]
+    return None
+
+
 def _rooms_from_spaces(spaces: Any) -> list[dict[str, Any]]:
     if not isinstance(spaces, list):
         return []
@@ -718,7 +825,7 @@ def _rooms_from_spaces(spaces: Any) -> list[dict[str, Any]]:
         label = str(raw_space.get("label") or raw_space.get("name") or raw_space.get("text") or "").strip()
         if not label:
             continue
-        polygon = _normalize_polygon(raw_space.get("polygon"))
+        polygon = _space_polygon(raw_space)
         if len(polygon) < 3:
             continue
         min_x = min(point["xM"] for point in polygon)
@@ -751,7 +858,7 @@ def _normalize_spaces(spaces: Any, rooms: list[Any], *, fallback_to_rooms: bool 
             if not isinstance(raw_space, dict):
                 continue
             label = str(raw_space.get("label") or raw_space.get("name") or f"Space {index + 1}").strip()
-            polygon = _normalize_polygon(raw_space.get("polygon"))
+            polygon = _space_polygon(raw_space)
             if len(polygon) < 3:
                 continue
             space_id = str(raw_space.get("id") or _slug_id(label, index)).strip()
@@ -763,7 +870,7 @@ def _normalize_spaces(spaces: Any, rooms: list[Any], *, fallback_to_rooms: bool 
                 "polygon": polygon,
                 "areaSqm": round(area, 3) if area > 0 else None,
                 "confidence": _clamp(_number_value(raw_space, ["confidence"], 0.72), 0, 1),
-                "linkedRoomId": raw_space.get("linkedRoomId") or raw_space.get("linked_room_id"),
+                "linkedRoomId": _first_present(raw_space, ["linkedRoomId", "linked_room_id", "roomId", "room_id"]),
             })
 
     if normalized_spaces:
@@ -824,7 +931,7 @@ def _normalize_openings(openings: Any) -> list[dict[str, Any]]:
 def _openings_from_space_adjacency(spaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
     boxes = []
     for space in spaces:
-        polygon = _normalize_polygon(space.get("polygon"))
+        polygon = _space_polygon(space)
         if len(polygon) < 3:
             continue
         boxes.append({
@@ -927,8 +1034,20 @@ def _normalize_labels(labels: Any, rooms: list[Any]) -> list[dict[str, Any]]:
 
 
 def _normalize_polygon(value: Any) -> list[dict[str, float]]:
+    if isinstance(value, dict):
+        for key in ("polygon", "points", "boundary", "vertices", "outline", "coordinates"):
+            polygon = _normalize_polygon(value.get(key))
+            if polygon:
+                return polygon
+        return []
+
     if not isinstance(value, list):
         return []
+    if value and isinstance(value[0], (list, tuple)) and value[0] and isinstance(value[0][0], (dict, list, tuple)):
+        nested_polygon = _normalize_polygon(value[0])
+        if nested_polygon:
+            return nested_polygon
+
     points = []
     for raw_point in value:
         point = _normalize_point(raw_point)
@@ -992,7 +1111,7 @@ def _labels_from_spaces(spaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
     labels = []
     for index, space in enumerate(spaces):
         label = str(space.get("label") or f"Space {index + 1}").strip()
-        polygon = _normalize_polygon(space.get("polygon"))
+        polygon = _space_polygon(space)
         if not label or len(polygon) < 3:
             continue
         centroid = _polygon_centroid(polygon)
@@ -1035,7 +1154,7 @@ def _walls_from_geometry(floor_plate: list[dict[str, float]], spaces: list[dict[
     if len(floor_plate) >= 3:
         polygons.append(("floor-plate", floor_plate))
     for space in spaces:
-        polygon = _normalize_polygon(space.get("polygon"))
+        polygon = _space_polygon(space)
         if len(polygon) >= 3:
             polygons.append((str(space.get("id") or "space"), polygon))
 
@@ -1853,6 +1972,7 @@ def _analysis_prompt(filename: str) -> str:
         "Infer the building type, floor count, total floor area, rooms, approximate room dimensions, room positions, major furniture items, "
         "circulation area, estimated wall length, furniture-fit score, and sightline score. Use Singapore/SI units. "
         "Coordinate contract: use one absolute metre coordinate system for the whole plan. xM and yM are each room rectangle's top-left corner. "
+        "Put areaSqm, widthM, depthM, xM, and yM directly on every room object; do not nest room geometry under dimensions, position, bounds, or coordinates. "
         "widthM runs left-to-right and depthM runs top-to-bottom. All coordinates are non-negative numbers. Rectangles may share edges, "
         "but room interiors must not overlap. Do not stack rooms on top of each other. Do not place rooms in a generic grid unless the source drawing is a grid. "
         "Geometry primitive contract: floorPlate is the outer usable apartment/unit footprint polygon. spaces are actual enclosed or labeled areas as polygons, "
@@ -1935,6 +2055,28 @@ def _number_value(value: Any, keys: list[str], default: float) -> float:
             except ValueError:
                 continue
     return default
+
+
+def _optional_number_value(value: Any, keys: list[str]) -> float | None:
+    if not isinstance(value, dict):
+        return None
+    for key in keys:
+        parsed = _coerce_number(value.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _coerce_number(value: Any) -> float | None:
+    if isinstance(value, (int, float)) and math.isfinite(value):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            parsed = float(value)
+        except ValueError:
+            return None
+        return parsed if math.isfinite(parsed) else None
+    return None
 
 
 def _has_number(value: Any, keys: list[str]) -> bool:

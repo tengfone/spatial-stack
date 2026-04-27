@@ -23,7 +23,7 @@ The product stance is model-assisted extraction, human-verified review. OpenRout
 - Explicit error when model access is unavailable, rather than fabricated fallback geometry.
 - Original-plan preview for reviewer verification.
 - Geometry guardrails for overlapping rooms and furniture.
-- Useful planner tools: 3D, top view, measure, furniture, sun/orientation, walk-through, materials, export.
+- Useful planner tools: 3D, top view, source overlay, measure, furniture, sun/orientation, walk-through, materials, export.
 - Minimal AWS serverless deployment path that can be explained quickly.
 - Terraform-managed cost guardrails for hackathon safety.
 
@@ -31,9 +31,9 @@ The product stance is model-assisted extraction, human-verified review. OpenRout
 
 - **Vite + React + TypeScript**: Fast iteration and a static frontend deployable to private S3 behind CloudFront. Typed API contracts in `frontend/src/lib/api-client.ts` keep the UI aligned with backend payloads.
 - **Tailwind CSS + local primitives**: Gives a controlled design system without adopting a heavy UI library. The interface uses compact toolbars, right-side analysis panels, and restrained controls instead of a generic dashboard layout.
-- **SVG spatial renderer**: The viewer in `SpatialViewer.tsx` renders 3D-style room prisms, top view, furniture, labels, shadows, measurement overlays, and walk-through HUD with standard browser primitives. This keeps the demo lightweight and makes SVG export straightforward.
+- **SVG spatial renderer**: The viewer in `SpatialViewer.tsx` renders 3D-style room prisms, top view, source overlays, furniture, labels, shadows, measurement overlays, and walk-through HUD with standard browser primitives. This keeps the demo lightweight and makes SVG export straightforward.
 - **Python + FastAPI + Pydantic**: FastAPI provides the local development API. Pydantic defines the plan analysis contract and rejects malformed model output before it reaches the UI.
-- **Direct OpenRouter HTTP client**: The backend posts directly to OpenRouter's `/chat/completions` endpoint with `response_format.type = "json_schema"` and strict JSON Schema structured output. The single configured model defaults to Gemini 3 Flash Preview and is configurable through `OPENROUTER_MODEL` locally and `openrouter_model` in Terraform.
+- **Direct OpenRouter HTTP client**: The backend posts directly to OpenRouter's `/chat/completions` endpoint with `response_format.type = "json_schema"` and one configured model. `OPENROUTER_MODEL` controls local runs, Terraform's `openrouter_model` controls AWS, and the current backend/Terraform default is `google/gemini-3-flash-preview`. Gemini-family models use a compact provider-compatible schema and can retry the same model with `json_object` if the provider rejects schema arguments.
 - **PyMuPDF**: PDF floor plans are rendered to first-page JPEG images before analysis, which lets the same multimodal path handle image and PDF sources.
 - **S3 raw-plan storage**: When `RAW_PLAN_BUCKET_NAME` is configured, uploaded source plans are stored under `plans/{planId}/...` with server-side encryption.
 - **DynamoDB**: On-demand billing and a simple `pk`/`sk` table support shared plan records, worker status, stored analysis contracts, and audit records without standing database cost.
@@ -57,8 +57,8 @@ The product stance is model-assisted extraction, human-verified review. OpenRout
 ## Challenges
 
 - **Converting visual floor plans into structured geometry.** A 2D plan is not a data table. Room labels, walls, fixtures, door swings, and dimensions are visual evidence. Solution: the backend sends a detailed schema-guided prompt to OpenRouter and requires JSON with space polygons, compatibility room bounds, coordinates, dimensions, furniture, and metrics.
-- **Keeping model output renderer-safe.** Model-generated geometry can overlap, omit fields, use inconsistent aliases, or place furniture outside rooms. Solution: OpenRouter is constrained with strict JSON Schema, Python normalizes aliases, makes linked space polygons authoritative for matching room bounds, infers missing room types, derives safe display defaults when possible, repairs fallback rectangle placements, and validates the final payload with Pydantic.
-- **Failing weak extraction clearly.** The app now uses one configured model. Empty room extraction, severe room overlap when rectangle geometry is the only source, missing dimensions, furniture outside rooms, low confidence, or Pydantic validation failure marks the plan failed instead of blending in a second model's interpretation.
+- **Keeping model output renderer-safe.** Model-generated geometry can overlap, omit fields, use inconsistent aliases, or place furniture outside rooms. Solution: OpenRouter is asked for structured output, Python normalizes provider-specific aliases, canonicalizes nested room geometry from `dimensions`, `position`, `coordinates`, `bounds`, or rectangle-style fields, makes linked space polygons authoritative for matching room bounds, infers missing room types, derives safe display defaults when possible, repairs renderer-hostile placement geometry, and validates the final payload with Pydantic.
+- **Failing weak extraction clearly.** The app now uses one configured model. Empty room extraction, severe room overlap when rectangle geometry is the only source, missing dimensions, furniture outside rooms, low confidence, incomplete space extraction, missing floor plate polygons, missing openings, or Pydantic validation failure marks the plan failed instead of blending in a second model's interpretation.
 - **Avoiding hidden browser-side AI.** The original style of many quick prototypes is to call an AI service directly from the browser. That does not work for institutional software. Solution: the browser only calls the backend API. OpenRouter keys, PDF rendering, storage, and error handling all stay server-side.
 - **Avoiding stuck analysis states and API Gateway's 30-second ceiling.** Analysis can exceed a comfortable UI wait and, in AWS, the API Gateway integration timeout even when Lambda has more time available. Solution: the API writes a pending shared record, returns `202`, updates `statusMessage` / `progressPct` through the worker, and the frontend polls the plan record until it is ready or failed. In AWS the upload is first stored in S3, then the Lambda invokes itself asynchronously.
 - **Handling source files.** PDFs are rendered to first-page JPEGs before analysis, and image uploads are sent as base64 data URLs through the backend-owned OpenRouter request.
@@ -74,7 +74,7 @@ The product stance is model-assisted extraction, human-verified review. OpenRout
 - Add authentication, role-based access, organization workspaces, and reviewer audit trails.
 - Move `OPENROUTER_API_KEY` from Terraform variables into Secrets Manager or another managed secret store.
 - Add batch upload and plan-portfolio queues for agencies reviewing many submissions.
-- Add a side-by-side source overlay so reviewers can visually compare original walls against extracted geometry.
+- Add calibrated side-by-side source comparison with wall and space diff highlighting beyond the current top-view overlay.
 - Add page selection and multi-page handling for PDF drawing packages.
 - Add scale calibration from visible dimensions or scale bars.
 - Add a human correction layer for room boundaries, labels, furniture, and coordinates.

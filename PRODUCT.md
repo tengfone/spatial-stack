@@ -20,9 +20,9 @@ Automate 2D-to-3D spatial visualization so organizations managing thousands of b
 
 ## Reliability Contract
 
-Spatial Stack is model-assisted review, not autonomous approval. The backend posts directly to OpenRouter with strict JSON Schema structured output, runs Gemini 3 Flash Preview by default, validates the response with Pydantic, makes linked space polygons authoritative for matching room bounds, and applies spatial sanity checks for missing rooms, missing dimensions, severe overlap when room rectangles are the only geometry, out-of-room furniture, low confidence, and incomplete extracted geometry.
+Spatial Stack is model-assisted review, not autonomous approval. The backend posts directly to OpenRouter with a schema-guided structured output request, runs one configured OpenRouter model, uses provider-aware schema handling when the model requires it, canonicalizes provider-specific geometry aliases, validates the response with Pydantic, makes linked space polygons authoritative for matching room bounds, and applies spatial sanity checks for missing rooms, missing dimensions, severe overlap when room rectangles are the only geometry, out-of-room furniture, low confidence, and incomplete extracted geometry.
 
-The product should describe this as a single configured model path, not fake demo continuity. If the model attempt fails, the user should see a clear failure state. If analysis takes longer than a normal request window, the user should see a pending or processing plan state while the frontend polls the saved plan record. Locally that shared state is in memory; in AWS it is DynamoDB-backed.
+The product should describe this as a single configured model path, not fake demo continuity or a hidden second-model fallback. If the model attempt fails, the user should see a clear failure state. If analysis takes longer than a normal request window, the user should see a pending or processing plan state while the frontend polls the saved plan record. Locally that shared state is in memory; in AWS it is DynamoDB-backed.
 
 ## Brand Personality
 
