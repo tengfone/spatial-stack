@@ -1,0 +1,34 @@
+project_name = "spatial-stack"
+environment  = "demo"
+aws_region   = "ap-southeast-1"
+
+# Leave these empty to let Terraform derive globally unique names from
+# project_name, environment, AWS account ID, and region.
+frontend_bucket_name = ""
+raw_plan_bucket_name = ""
+dynamodb_table_name  = ""
+lambda_function_name = ""
+
+# Cheap demo guardrails. Set cost_alert_email to receive AWS Budget,
+# CloudWatch billing, and lightweight Lambda usage alerts.
+cost_alert_email                        = ""
+monthly_budget_limit_usd                = 10
+billing_alarm_threshold_usd             = 5
+enable_cloudwatch_billing_alarm         = true
+enable_usage_alarms                     = true
+lambda_daily_invocation_alarm_threshold = 5000
+lambda_reserved_concurrency             = 5
+api_throttle_rate_limit                 = 5
+api_throttle_burst_limit                = 10
+lambda_memory_mb                        = 256
+lambda_timeout_seconds                  = 180
+lambda_log_retention_days               = 7
+raw_plan_expiration_days                = 30
+
+# Required for live AI analysis. This value is written to Terraform state and
+# the Lambda environment, so use a hackathon/demo key rather than a personal
+# long-lived key when possible.
+openrouter_api_key = ""
+openrouter_model   = "google/gemini-3-flash-preview"
+
+force_destroy_buckets = false

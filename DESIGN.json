@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-04-27T00:55:00+08:00",
+  "title": "Design System: Spatial Stack",
+  "extensions": {
+    "colorMeta": {
+      "steel-blue": {
+        "role": "primary",
+        "displayName": "Steel Blue",
+        "canonical": "oklch(0.45 0.08 250)",
+        "tonalRamp": [
+          "oklch(0.18 0.04 250)",
+          "oklch(0.28 0.06 250)",
+          "oklch(0.38 0.08 250)",
+          "oklch(0.45 0.08 250)",
+          "oklch(0.55 0.07 250)",
+          "oklch(0.65 0.06 250)",
+          "oklch(0.78 0.04 250)",
+          "oklch(0.90 0.02 250)"
+        ]
+      },
+      "slate-ink": {
+        "role": "neutral",
+        "displayName": "Slate Ink",
+        "canonical": "oklch(0.22 0.012 250)",
+        "tonalRamp": [
+          "oklch(0.15 0.012 250)",
+          "oklch(0.22 0.012 250)",
+          "oklch(0.32 0.012 250)",
+          "oklch(0.42 0.014 250)",
+          "oklch(0.55 0.015 250)",
+          "oklch(0.70 0.012 250)",
+          "oklch(0.85 0.008 250)",
+          "oklch(0.95 0.005 250)"
+        ]
+      },
+      "alert-red": {
+        "role": "semantic",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.50 0.16 25)",
+        "tonalRamp": [
+          "oklch(0.20 0.06 25)",
+          "oklch(0.30 0.10 25)",
+          "oklch(0.40 0.14 25)",
+          "oklch(0.50 0.16 25)",
+          "oklch(0.60 0.14 25)",
+          "oklch(0.72 0.10 25)",
+          "oklch(0.84 0.06 25)",
+          "oklch(0.94 0.02 25)"
+        ]
+      },
+      "status-green": {
+        "role": "semantic",
+        "displayName": "Status Green",
+        "canonical": "oklch(0.62 0.14 145)",
+        "tonalRamp": [
+          "oklch(0.20 0.06 145)",
+          "oklch(0.30 0.08 145)",
+          "oklch(0.42 0.10 145)",
+          "oklch(0.52 0.12 145)",
+          "oklch(0.62 0.14 145)",
+          "oklch(0.72 0.12 145)",
+          "oklch(0.84 0.08 145)",
+          "oklch(0.94 0.04 145)"
+        ]
+      },
+      "status-amber": {
+        "role": "semantic",
+        "displayName": "Status Amber",
+        "canonical": "oklch(0.70 0.12 55)",
+        "tonalRamp": [
+          "oklch(0.22 0.04 55)",
+          "oklch(0.32 0.06 55)",
+          "oklch(0.44 0.08 55)",
+          "oklch(0.56 0.10 55)",
+          "oklch(0.70 0.12 55)",
+          "oklch(0.80 0.10 55)",
+          "oklch(0.88 0.06 55)",
+          "oklch(0.95 0.03 55)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Section headings, panel titles, analysis names." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, notes, supporting copy." },
+      "label": { "displayName": "Label", "purpose": "Section labels, metric headers, status indicators. Uppercase with tracking." },
+      "mono": { "displayName": "Mono", "purpose": "Numeric values, percentages, tabular data." }
+    },
+    "shadows": [
+      {
+        "name": "panel",
+        "value": "0 1px 3px oklch(0.22 0.01 250 / 0.06), 0 1px 2px oklch(0.22 0.01 250 / 0.04)",
+        "purpose": "Floating overlays inside the viewer surface. The only shadow in the system."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-transition",
+        "value": "150ms ease-out",
+        "purpose": "Default duration and easing for hover/focus color transitions on buttons and nav items."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main call-to-action. The only button with chromatic fill.",
+      "html": "<button class=\"ds-btn-primary\">Analyze</button>",
+      "css": ".ds-btn-primary { background: oklch(0.45 0.08 250); color: oklch(0.97 0.004 250); padding: 0 12px; height: 40px; font-size: 0.875rem; font-weight: 600; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.011em; border: none; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background 150ms ease-out; } .ds-btn-primary:hover { background: oklch(0.38 0.08 250); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.45 0.08 250); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.55; pointer-events: none; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Toggled-on state button. Used for active viewer controls.",
+      "html": "<button class=\"ds-btn-secondary\">Furniture</button>",
+      "css": ".ds-btn-secondary { background: oklch(0.93 0.008 250); color: oklch(0.28 0.012 250); padding: 0 12px; height: 40px; font-size: 0.875rem; font-weight: 600; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.011em; border: none; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background 150ms ease-out; } .ds-btn-secondary:hover { background: oklch(0.90 0.01 250); } .ds-btn-secondary:focus-visible { outline: 2px solid oklch(0.45 0.08 250); outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.55; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Neutral secondary action. Border-defined.",
+      "html": "<button class=\"ds-btn-outline\">Upload floor plan</button>",
+      "css": ".ds-btn-outline { background: oklch(0.985 0.004 250); color: oklch(0.22 0.012 250); padding: 0 12px; height: 40px; font-size: 0.875rem; font-weight: 600; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.011em; border: 1px solid oklch(0.88 0.008 250); border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background 150ms ease-out; } .ds-btn-outline:hover { background: oklch(0.93 0.008 250); } .ds-btn-outline:focus-visible { outline: 2px solid oklch(0.45 0.08 250); outline-offset: 2px; } .ds-btn-outline:disabled { opacity: 0.55; pointer-events: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Toolbar controls. Invisible at rest, tinted on hover.",
+      "html": "<button class=\"ds-btn-ghost\">Reset</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: oklch(0.22 0.012 250); padding: 0 12px; height: 40px; font-size: 0.875rem; font-weight: 600; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; letter-spacing: -0.011em; border: none; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background 150ms ease-out; } .ds-btn-ghost:hover { background: oklch(0.93 0.008 250); } .ds-btn-ghost:focus-visible { outline: 2px solid oklch(0.45 0.08 250); outline-offset: 2px; } .ds-btn-ghost:disabled { opacity: 0.55; pointer-events: none; }"
+    },
+    {
+      "name": "Default Badge",
+      "kind": "chip",
+      "refersTo": "badge-default",
+      "description": "Status label for primary indicators like processing mode.",
+      "html": "<span class=\"ds-badge\">OpenRouter</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; background: oklch(0.45 0.08 250); color: oklch(0.97 0.004 250); padding: 4px 10px; border-radius: 4px; font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; border: 1px solid transparent; }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Top bar navigation link. Active state uses background fill, no accent color.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"/></svg> Workspace</a><a class=\"ds-nav-item ds-nav-active\" href=\"#\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"1\"/><circle cx=\"12\" cy=\"5\" r=\"1\"/><circle cx=\"12\" cy=\"19\" r=\"1\"/></svg> Architecture</a></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 2px; } .ds-nav-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color: oklch(0.55 0.015 250); text-decoration: none; transition: background 150ms ease-out, color 150ms ease-out; } .ds-nav-item:hover { background: oklch(0.93 0.008 250); color: oklch(0.22 0.012 250); } .ds-nav-active { background: oklch(0.93 0.008 250); color: oklch(0.22 0.012 250); }"
+    },
+    {
+      "name": "Progress Bar",
+      "kind": "custom",
+      "refersTo": "progress-track",
+      "description": "Score indicator for furniture fit and sightline metrics.",
+      "html": "<div class=\"ds-progress\"><div class=\"ds-progress-track\"><div class=\"ds-progress-fill\" style=\"width: 72%\"></div></div><div class=\"ds-progress-labels\"><span class=\"ds-progress-label\">Furniture fit</span><span class=\"ds-progress-value\">72%</span></div></div>",
+      "css": ".ds-progress { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; } .ds-progress-track { width: 100%; height: 8px; background: oklch(0.94 0.006 250); border-radius: 2px; overflow: hidden; box-shadow: inset 0 1px 2px oklch(0.22 0.01 250 / 0.06); } .ds-progress-fill { height: 100%; background: oklch(0.45 0.08 250); border-radius: 2px; transition: width 300ms ease-out; } .ds-progress-labels { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.75rem; } .ds-progress-label { color: oklch(0.22 0.012 250); } .ds-progress-value { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; color: oklch(0.22 0.012 250); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Survey Instrument",
+    "overview": "Spatial Stack is a precision measurement tool for spatial decision-making. Every element exists because it serves the reading. The interface is calibrated, not decorated; trustworthy, not impressive. A city planner reviewing development proposals at 9am under fluorescent lighting should feel the same quiet confidence they feel picking up a well-made theodolite: the tool disappears into the task.\n\nThe system rejects consumer-grade home design aesthetics (too playful, too decorative), dark-mode developer tool conventions (wrong audience, wrong ambient light), generic SaaS dashboard patterns (card-heavy layouts, casual tone), and overly decorated government portals (bureaucratic friction). It draws instead from the precision of surveying instruments, the clarity of cartographic standards, and the density of professional CAD review environments.\n\nColor is restrained: cool slate-tinted neutrals with a single steel-blue accent used only for primary actions and state indicators. The 3D viewer dominates the viewport. Supporting UI compresses to toolbars, side panels, and inline controls. Typography is tight, monospaced where data demands it, and never decorative.",
+    "keyCharacteristics": [
+      "Viewer-first layout: the 3D spatial model owns the viewport",
+      "Restrained color: one accent at less than 10% surface coverage",
+      "Dense, scannable data panels for professionals processing many plans",
+      "Light theme tuned for office environments and extended use",
+      "Flat by default; shadows appear only as state feedback",
+      "WCAG 2.1 AA minimum throughout"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Steel Blue is the only chromatic accent on standard product surfaces. Its presence marks actionable or active elements. If Steel Blue appears on more than 10% of a screen, something is over-decorated. Semantic colors (red, green, amber) are state-only and do not count toward accent coverage.", "section": "colors" },
+      { "name": "The Tight Scale Rule", "body": "The ratio between adjacent type steps is 1.17 (14/12). Product UI with many label types requires a compressed scale; wider ratios create visual noise. Never exceed 1.25 between adjacent steps.", "section": "typography" },
+      { "name": "The Negative Tracking Rule", "body": "Body text carries -0.011em letter-spacing globally. Inter at small sizes benefits from slight tightening. Labels are the exception: they use positive tracking (0.08em) because uppercase text at 11px needs air.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. The panel shadow is reserved for floating overlays inside the viewer. If you are reaching for a shadow on a page-level element, use a border or tonal shift instead. Shadows on cards, sections, or metric panels are prohibited.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Steel Blue exclusively for interactive or active elements. If it's not clickable or currently selected, it should not be Steel Blue.",
+      "Do separate data sections with 1px Wire borders. Borders are the primary spatial divider.",
+      "Do use tabular-nums (font-variant-numeric: tabular-nums) on all numeric data so columns align.",
+      "Do compress UI chrome to toolbars and side panels. The viewer is the product.",
+      "Do test every text/background combination against WCAG 2.1 AA (4.5:1 for body, 3:1 for large text).",
+      "Do use uppercase + tracking (0.08em) for section labels to visually separate them from content."
+    ],
+    "donts": [
+      "Don't use shadows on page-level elements. Shadows are reserved for floating overlays inside the viewer. Use borders and tonal shifts everywhere else.",
+      "Don't wrap sections in cards. The old design's card-heavy layout is an explicit anti-reference. Use border-separated sections within panels.",
+      "Don't use a sidebar navigation. Two nav items do not justify 264px of permanent sidebar. The top bar is the only navigation pattern.",
+      "Don't use grid-pattern or textured backgrounds. The viewer surface is a flat tinted canvas. Decorative backgrounds compete with the 3D model.",
+      "Don't use dark mode. These users work in fluorescent-lit offices on desktop monitors. A dark theme would reduce legibility in their actual environment.",
+      "Don't use consumer-grade home design aesthetics: bright accent palettes, playful illustrations, rounded-everything, decorative gradients.",
+      "Don't use overly decorated government portal patterns: busy headers, seal imagery, dropdown-heavy navigation trees, outdated form layouts.",
+      "Don't use hero-metric cards (big number, small label, icon, card wrapper). Display metrics inline in dense grids or labeled rows.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe on any element.",
+      "Don't use gradient text, glassmorphism, or bounce/elastic easing."
+    ]
+  }
+}
